@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Claude Code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0f1117;
+    --panel: #161923;
+    --panel-2: #1c202c;
+    --line: #2a2f3d;
+    --text: #e7e9ee;
+    --muted: #8b90a3;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Source Sans 3', sans-serif;
+
+    --c-managed: #d9a441;
+    --c-user: #4fb3a9;
+    --c-project: #5b8def;
+    --c-local: #b48ce0;
+    --c-rules: #e0715c;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0; padding:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 28px 60px;
+  }
+
+  header.page{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap: 24px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  h1{
+    font-family: var(--mono);
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  h1 span{ color: var(--muted); font-weight: 500; }
+
+  .sub{
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 560px;
+    line-height: 1.5;
+  }
+
+  .legend{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .legend button{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12.5px;
+    padding: 6px 11px 6px 9px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .legend button:hover{ border-color: var(--dot); background: var(--panel-2); }
+  .legend button.dim{ opacity: .35; }
+  .dot{
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--dot);
+    flex-shrink: 0;
+  }
+
+  .board{
+    display:grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 860px){
+    .board{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel-head{
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+  }
+  .panel-head .btns{ display:flex; gap:6px; }
+  .panel-head button{
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 11.5px;
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .panel-head button:hover{ color: var(--text); border-color: #454b5e; }
+
+  .tree{
+    padding: 14px 10px 20px 6px;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.9;
+  }
+
+  .node{ position:relative; }
+  .row{
+    display:flex;
+    align-items:center;
+    gap: 7px;
+    padding: 3px 8px 3px 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select:none;
+    white-space:nowrap;
+  }
+  .row:hover{ background: var(--panel-2); }
+  .row.active{ background: #21283a; }
+  .row .caret{
+    width: 14px; text-align:center;
+    color: var(--muted);
+    font-size: 10px;
+    transition: transform .15s ease;
+    flex-shrink:0;
+  }
+  .row.open > .caret{ transform: rotate(90deg); }
+  .row .caret.leaf{ visibility:hidden; }
+
+  .row .chip{
+    width: 7px; height: 7px; border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--chip, var(--muted));
+  }
+
+  .row .name{ color: var(--text); }
+  .row .name.folder{ font-weight: 600; }
+  .row .tag{
+    color: var(--muted);
+    font-size: 11px;
+    margin-left: 4px;
+  }
+
+  .children{
+    margin-left: 19px;
+    padding-left: 12px;
+    border-left: 1px solid var(--line);
+    display: none;
+  }
+  .children.show{ display:block; }
+
+  /* detail panel */
+  .detail-body{ padding: 18px 20px 22px; min-height: 320px; }
+  .detail-empty{
+    color: var(--muted);
+    font-size: 14px;
+    padding-top: 8px;
+    line-height: 1.6;
+  }
+  .detail-path{
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    margin-bottom: 4px;
+  }
+  .detail-scope{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family: var(--sans);
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .detail-scope .dot{ width:7px; height:7px; }
+
+  .detail-body p{
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: #cfd2dc;
+    margin: 0 0 14px;
+  }
+  .snippet-label{
+    font-size: 12.5px;
+    color: var(--muted);
+    font-style: italic;
+    margin: 4px 0 6px;
+  }
+  .detail-body code{
+    font-family: var(--mono);
+    background: var(--panel-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #f0c987;
+  }
+
+  .kv{
+    display:grid;
+    grid-template-columns: 84px 1fr;
+    gap: 6px 12px;
+    font-size: 13px;
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .kv dt{ color: var(--muted); }
+  .kv dd{ margin:0; color: var(--text); }
+
+  .snippet{
+    background: #0c0e14;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #c9cddb;
+    white-space: pre-wrap;
+    margin-top: 4px;
+  }
+  .snippet .c1{ color: #6b7280; }
+  .snippet .c2{ color: #7dd3c0; }
+
+  footer{
+    margin-top: 22px;
+    color: var(--muted);
+    font-size: 12.5px;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <div>
+      <h1>Claude Code</span></h1>
+      <div class="sub">Every location Claude Code reads CLAUDE.md and rules from — click a folder or file to see what it's for.</div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </header>
+
+  <div class="board">
+    <div class="panel">
+      <div class="panel-head">
+        <span>FILE TREE</span>
+        <div class="btns">
+          <button id="expandAll">Expand all</button>
+          <button id="collapseAll">Collapse all</button>
+        </div>
+      </div>
+      <div class="tree" id="tree"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>DETAILS</span></div>
+      <div class="detail-body" id="detail">
+        <div class="detail-empty">Click any folder or file on the left to see what it does, its load priority, and an example.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Based on code.claude.com/docs/en/memory — load order runs root → working directory, general → specific.</footer>
+</div>
+
+<script>
+const DATA = [
+  {
+    name: "/etc/claude-code/CLAUDE.md", type:"file", scope:"managed",
+    tag: "macOS/Windows paths differ",
+    desc: "Organization-wide instructions pushed by IT/DevOps. Applies to every Claude Code session on the machine, in every repo — can't be excluded by individual settings.",
+    kv: [["Scope","Whole machine, all users"],["Loads","Before user & project files"],["Written by","IT / platform team"]],
+    snippet: null
+  },
+  {
+    name: "/etc/claude-code/managed-settings.json", type:"file", scope:"managed",
+    tag: "alternative to a separate file",
+    desc: "IT can also embed CLAUDE.md content directly inside a settings JSON via the claudeMd key, instead of maintaining a separate managed CLAUDE.md file. Only takes effect in managed/policy settings — the same key in user or project settings does nothing.",
+    kv: [["Key","claudeMd"],["Precedence","Same as managed CLAUDE.md — loads first"]],
+    snippet: "{\n  \"claudeMd\": \"Always run `make lint` before committing.\\nNever push directly to main.\"\n}"
+  },
+  {
+    name: "~", type:"folder", scope:"user",
+    children: [
+      { name: "CLAUDE.md", type:"file", scope:"user",
+        desc: "Your personal preferences that should apply no matter which project you're in — coding style defaults, personal tooling shortcuts.",
+        kv: [["Scope","Just you, all projects"],["Shared","No"]],
+        snippet: "# Personal defaults\n- Prefer pnpm over npm\n- Always write Playwright tests with the Page Object Model" },
+      { name: "rules/", type:"folder", scope:"user",
+        desc: "Personal rules that load for every project on your machine — split by topic instead of one big file.",
+        kv: [["Loads","Before project rules"]],
+        children: [
+          { name: "preferences.md", type:"file", scope:"user",
+            desc: "Your standing coding preferences, loaded unconditionally in every session.",
+            snippet: "# Preferences\n- 2-space indentation\n- Arrow functions over function declarations" },
+          { name: "workflows.md", type:"file", scope:"user",
+            desc: "Your preferred git/PR workflow, independent of any one project.",
+            snippet: "# Workflow\n- Run `npm test` before every commit\n- Squash-merge feature branches" }
+        ]
+      }
+    ]
+  },
+  {
+    name: "your-project/", type:"folder", scope:"project",
+    children: [
+      { name: "CLAUDE.md", type:"file", scope:"project",
+        tag: "or ./.claude/CLAUDE.md",
+        desc: "Team-shared instructions committed to version control: architecture, build/test commands, naming conventions, common workflows. Can pull in other files with @path syntax — expand this row to see how an import behaves.",
+        kv: [["Scope","Whole team"],["Target size","Under 200 lines"],["Generate with","/init"],["Imports","Eager — loaded at launch, not lazy"]],
+        examples: [
+          { label: "Basic example", code: "# Project\nSee @README for overview.\n\n# Additional Instructions\n- git workflow @docs/git-instructions.md" },
+          { label: "If your repo already has an AGENTS.md (see that node for why)", code: "@AGENTS.md\n\n## Claude Code\nUse plan mode for changes under src/billing/." }
+        ],
+        children: [
+          { name: "docs/git-instructions.md", type:"file", scope:"project",
+            tag: "pulled in via @import",
+            desc: "An imported file, referenced with @path syntax inside CLAUDE.md. It gets expanded and loaded into context at launch, right alongside CLAUDE.md — this is NOT lazy-loading, it's purely for keeping the source file organized on disk. Imports can chain up to 4 levels deep. Wrapping a path in backticks (`@README`) keeps it literal instead of importing it.",
+            kv: [["Loads","At launch — same time as CLAUDE.md"],["Saves context?","No — organization only"]]
+          }
+        ]
+      },
+      { name: "AGENTS.md", type:"file", scope:"project",
+        tag: "Claude Code does not read this directly",
+        desc: "This file belongs to other coding agents (Cursor, Copilot, etc.) and Claude Code never opens it on its own. Its own content is whatever those other tools expect — plain agent instructions, nothing Claude-specific. This file is never edited for Claude's sake. To make Claude Code aware of it, you edit CLAUDE.md instead (click that node to see the exact line you'd add).",
+        kv: [["Option 1","ln -s AGENTS.md CLAUDE.md"],["Option 2","Add @AGENTS.md to CLAUDE.md"]] },
+      { name: "CLAUDE.local.md", type:"file", scope:"local",
+        desc: "Your personal, project-specific notes — sandbox URLs, local test data. Add it to .gitignore; loads last, after CLAUDE.md. Gitignored so it stays in one worktree — to share personal notes across worktrees, import a file from your home directory instead.",
+        kv: [["Scope","Just you, this project"],["Git","Should be .gitignore'd"]],
+        snippet: "# Local only\n- Staging URL: https://stg.internal.example\n- Test user: qa_auto@example.com" },
+      { name: "src/", type:"folder", scope:"project",
+        children: [
+          { name: "CLAUDE.md", type:"file", scope:"project",
+            tag: "nested — loads on demand",
+            desc: "A CLAUDE.md placed inside a subdirectory instead of the project root. Unlike the root file, this one is NOT loaded at launch — it only enters context the moment Claude reads a file inside src/. Useful for instructions that only matter to one part of a large codebase.",
+            kv: [["Loads","Only when Claude opens a file under src/"],["vs root CLAUDE.md","Root: always. Nested: on demand."]]
+          }
+        ]
+      },
+      { name: ".claude/", type:"folder", scope:"project",
+        children: [
+          { name: "CLAUDE.md", type:"file", scope:"project",
+            desc: "Alternate location for the main project file — same purpose as root ./CLAUDE.md, pick one." },
+          { name: "settings.local.json", type:"file", scope:"local",
+            tag: "monorepo cleanup",
+            desc: "In a large monorepo, ancestor CLAUDE.md files from other teams can get pulled into your context whether you want them or not. claudeMdExcludes skips specific files or folders by glob pattern, kept local to your machine so it doesn't affect your teammates.",
+            kv: [["Setting","claudeMdExcludes"],["Scope","Just you — not committed"]],
+            snippet: "{\n  \"claudeMdExcludes\": [\n    \"**/monorepo/CLAUDE.md\",\n    \".../other-team/.claude/rules/**\"\n  ]\n}" },
+          { name: "rules/", type:"folder", scope:"rules",
+            desc: "Split large project instructions into topic files. All .md files are discovered recursively, including subfolders like frontend/ or backend/.",
+            children: [
+              { name: "code-style.md", type:"file", scope:"rules",
+                desc: "Unconditional rule (no paths: frontmatter) — loads every session, same priority as CLAUDE.md.",
+                snippet: "# Code Style\n- Prefer async/await over .then()\n- No default exports" },
+              { name: "testing.md", type:"file", scope:"rules",
+                tag: "path-scoped",
+                desc: "Only loads when Claude opens a file matching the paths glob — keeps context lean.",
+                snippet: "---\npaths:\n  - \"tests/**/*.ts\"\n---\n\n# Testing Rules\n- Use Page Object Model\n- Prefer getByRole locators" },
+              { name: "security.md", type:"file", scope:"rules",
+                tag: "could be a symlink",
+                desc: "Example topic file for security requirements, kept separate so it can be excluded per-team in a monorepo via claudeMdExcludes." },
+              { name: "shared/", type:"folder", scope:"rules",
+                tag: "symlink",
+                desc: ".claude/rules/ supports symlinks, so a team can maintain one shared rules folder (or even a single file) and link it into many repos instead of copy-pasting. Circular symlinks are detected and handled safely.",
+                kv: [["Example","ln -s ~/shared-claude-rules .claude/rules/shared"]]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+];
+
+const SCOPES = {
+  managed: { label: "Managed policy", color: "var(--c-managed)" },
+  user:    { label: "User-level",      color: "var(--c-user)" },
+  project: { label: "Project-level",   color: "var(--c-project)" },
+  local:   { label: "Local (yours)",   color: "var(--c-local)" },
+  rules:   { label: "Rules",           color: "var(--c-rules)" }
+};
+
+const treeEl = document.getElementById('tree');
+const detailEl = document.getElementById('detail');
+const legendEl = document.getElementById('legend');
+let activeRow = null;
+let activeScope = null;
+
+function esc(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function highlightSnippet(s){
+  return esc(s)
+    .replace(/^(#.*)$/gm, '<span class="c1">$1</span>')
+    .replace(/(---)/g, '<span class="c1">$1</span>')
+    .replace(/^(paths:)/gm, '<span class="c2">$1</span>');
+}
+
+function buildNode(node, depth){
+  const li = document.createElement('div');
+  li.className = 'node';
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.dataset.scope = node.scope;
+  if(node.type === 'folder') row.classList.add('folder-row');
+  if(node.children) row.classList.add('expandable-row');
+
+  const caret = document.createElement('span');
+  caret.className = 'caret' + (node.children ? '' : ' leaf');
+  caret.textContent = '▶';
+  row.appendChild(caret);
+
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.style.setProperty('--chip', SCOPES[node.scope] ? SCOPES[node.scope].color : 'var(--muted)');
+  row.appendChild(chip);
+
+  const name = document.createElement('span');
+  name.className = 'name' + (node.type === 'folder' ? ' folder' : '');
+  name.textContent = node.name;
+  row.appendChild(name);
+
+  if(node.tag){
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '// ' + node.tag;
+    row.appendChild(tag);
+  }
+
+  li.appendChild(row);
+
+  let childWrap = null;
+  if(node.children){
+    childWrap = document.createElement('div');
+    childWrap.className = 'children';
+    node.children.forEach(c => childWrap.appendChild(buildNode(c, depth+1)));
+    li.appendChild(childWrap);
+  }
+
+  row.addEventListener('click', (e) => {
+    if(node.children){
+      row.classList.toggle('open');
+      childWrap.classList.toggle('show');
+    }
+    if(node.desc){
+      showDetail(node, row);
+    }
+  });
+
+  return li;
+}
+
+function showDetail(node, row){
+  if(activeRow) activeRow.classList.remove('active');
+  row.classList.add('active');
+  activeRow = row;
+
+  const scope = SCOPES[node.scope] || { label: node.scope, color: 'var(--muted)' };
+
+  let html = '';
+  html += `<div class="detail-path">${esc(node.name)}</div>`;
+  html += `<div class="detail-scope"><span class="dot" style="background:${scope.color}"></span>${scope.label}</div>`;
+  html += `<p>${esc(node.desc)}</p>`;
+
+  if(node.kv && node.kv.length){
+    html += '<dl class="kv">';
+    node.kv.forEach(([k,v]) => {
+      html += `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`;
+    });
+    html += '</dl>';
+  }
+
+  if(node.examples && node.examples.length){
+    node.examples.forEach(ex => {
+      if(ex.label){
+        html += `<div class="snippet-label">${esc(ex.label)}</div>`;
+      }
+      html += `<div class="snippet">${highlightSnippet(ex.code)}</div>`;
+    });
+  } else if(node.snippet){
+    if(node.snippetLabel){
+      html += `<div class="snippet-label">${esc(node.snippetLabel)}</div>`;
+    }
+    html += `<div class="snippet">${highlightSnippet(node.snippet)}</div>`;
+  }
+
+  detailEl.innerHTML = html;
+}
+
+DATA.forEach(n => treeEl.appendChild(buildNode(n, 0)));
+
+// legend
+Object.entries(SCOPES).forEach(([key, s]) => {
+  const btn = document.createElement('button');
+  btn.innerHTML = `<span class="dot" style="--dot:${s.color}"></span>${s.label}`;
+  btn.addEventListener('click', () => {
+    if(activeScope === key){
+      activeScope = null;
+      document.querySelectorAll('.legend button').forEach(b => b.classList.remove('dim'));
+      document.querySelectorAll('.row').forEach(r => r.style.opacity = 1);
+    } else {
+      activeScope = key;
+      // auto-expand everything so matching nodes buried in collapsed
+      // folders actually become visible, not just un-dimmed
+      document.querySelectorAll('.children').forEach(c => c.classList.add('show'));
+      document.querySelectorAll('.row.expandable-row').forEach(r => r.classList.add('open'));
+
+      document.querySelectorAll('.legend button').forEach(b => b.classList.toggle('dim', b !== btn));
+      document.querySelectorAll('.row').forEach(r => {
+        r.style.opacity = (r.dataset.scope === key) ? 1 : 0.25;
+      });
+    }
+  });
+  legendEl.appendChild(btn);
+});
+
+document.getElementById('expandAll').addEventListener('click', () => {
+  document.querySelectorAll('.children').forEach(c => c.classList.add('show'));
+  document.querySelectorAll('.row.expandable-row').forEach(r => r.classList.add('open'));
+});
+document.getElementById('collapseAll').addEventListener('click', () => {
+  document.querySelectorAll('.children').forEach(c => c.classList.remove('show'));
+  document.querySelectorAll('.row.expandable-row').forEach(r => r.classList.remove('open'));
+});
+</script>
+</body>
+</html>

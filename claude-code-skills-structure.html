@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Claude Code Skills</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0f1117;
+    --panel: #161923;
+    --panel-2: #1c202c;
+    --line: #2a2f3d;
+    --text: #e7e9ee;
+    --muted: #8b90a3;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Source Sans 3', sans-serif;
+
+    --c-managed: #d9a441;
+    --c-personal: #4fb3a9;
+    --c-project: #5b8def;
+    --c-plugin: #b48ce0;
+    --c-synced: #e0715c;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    margin:0; padding:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 28px 60px;
+  }
+
+  header.page{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap: 24px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  h1{
+    font-family: var(--mono);
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+  }
+  h1 span{ color: var(--muted); font-weight: 500; }
+
+  .sub{
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 560px;
+    line-height: 1.5;
+  }
+
+  .legend{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .legend button{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12.5px;
+    padding: 6px 11px 6px 9px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .legend button:hover{ border-color: var(--dot); background: var(--panel-2); }
+  .legend button.dim{ opacity: .35; }
+  .dot{
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--dot);
+    flex-shrink: 0;
+  }
+
+  .board{
+    display:grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 860px){
+    .board{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel-head{
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+  }
+  .panel-head .btns{ display:flex; gap:6px; }
+  .panel-head button{
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 11.5px;
+    padding: 3px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .panel-head button:hover{ color: var(--text); border-color: #454b5e; }
+
+  .tree{
+    padding: 14px 10px 20px 6px;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.9;
+  }
+
+  .node{ position:relative; }
+  .row{
+    display:flex;
+    align-items:center;
+    gap: 7px;
+    padding: 3px 8px 3px 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    user-select:none;
+    white-space:nowrap;
+  }
+  .row:hover{ background: var(--panel-2); }
+  .row.active{ background: #21283a; }
+  .row .caret{
+    width: 14px; text-align:center;
+    color: var(--muted);
+    font-size: 10px;
+    transition: transform .15s ease;
+    flex-shrink:0;
+  }
+  .row.open > .caret{ transform: rotate(90deg); }
+  .row .caret.leaf{ visibility:hidden; }
+
+  .row .chip{
+    width: 7px; height: 7px; border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--chip, var(--muted));
+  }
+
+  .row .name{ color: var(--text); }
+  .row .name.folder{ font-weight: 600; }
+  .row .tag{
+    color: var(--muted);
+    font-size: 11px;
+    margin-left: 4px;
+  }
+
+  .children{
+    margin-left: 19px;
+    padding-left: 12px;
+    border-left: 1px solid var(--line);
+    display: none;
+  }
+  .children.show{ display:block; }
+
+  /* detail panel */
+  .detail-body{ padding: 18px 20px 22px; min-height: 320px; }
+  .detail-empty{
+    color: var(--muted);
+    font-size: 14px;
+    padding-top: 8px;
+    line-height: 1.6;
+  }
+  .detail-path{
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    margin-bottom: 4px;
+  }
+  .detail-scope{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-family: var(--sans);
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .detail-scope .dot{ width:7px; height:7px; }
+
+  .detail-body p{
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: #cfd2dc;
+    margin: 0 0 14px;
+  }
+  .snippet-label{
+    font-size: 12.5px;
+    color: var(--muted);
+    font-style: italic;
+    margin: 4px 0 6px;
+  }
+  .detail-body code{
+    font-family: var(--mono);
+    background: var(--panel-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #f0c987;
+  }
+
+  .kv{
+    display:grid;
+    grid-template-columns: 84px 1fr;
+    gap: 6px 12px;
+    font-size: 13px;
+    margin-top: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+  .kv dt{ color: var(--muted); }
+  .kv dd{ margin:0; color: var(--text); }
+
+  .snippet{
+    background: #0c0e14;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: #c9cddb;
+    white-space: pre-wrap;
+    margin-top: 4px;
+  }
+  .snippet .c1{ color: #6b7280; }
+  .snippet .c2{ color: #7dd3c0; }
+
+  footer{
+    margin-top: 22px;
+    color: var(--muted);
+    font-size: 12.5px;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <div>
+      <h1>Claude Code <span>Skills</span></h1>
+      <div class="sub">Every location Claude Code discovers SKILL.md from, plus what's inside one — click a folder or file to see what it's for.</div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </header>
+
+  <div class="board">
+    <div class="panel">
+      <div class="panel-head">
+        <span>FILE TREE</span>
+        <div class="btns">
+          <button id="expandAll">Expand all</button>
+          <button id="collapseAll">Collapse all</button>
+        </div>
+      </div>
+      <div class="tree" id="tree"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>DETAILS</span></div>
+      <div class="detail-body" id="detail">
+        <div class="detail-empty">Click any folder or file on the left to see what it does, its load priority, and an example.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Based on code.claude.com/docs/en/skills — precedence runs enterprise → personal → project, and root → nested.</footer>
+</div>
+
+<script>
+const DATA = [
+  {
+    name: "<managed-settings-dir>/.claude/skills/", type:"folder", scope:"managed",
+    tag: "e.g. /etc/claude-code/.claude/skills/ on Linux",
+    desc: "Organization-wide skills pushed by IT/DevOps through managed settings. Applies to every Claude Code session on machines where your org deploys it, and wins any name collision against a personal or project skill.",
+    kv: [["Scope","Whole machine, all users"],["Priority","Highest — beats personal and project"],["Written by","IT / platform team"]],
+    children: [
+      { name: "<skill-name>/SKILL.md", type:"file", scope:"managed",
+        desc: "Same SKILL.md format as a personal or project skill — expand the Personal branch to see the frontmatter and body in detail. An administrator removes it by deleting the directory from the managed settings location.",
+        kv: [["Removed by","Deleting the folder from the managed settings dir"]]
+      }
+    ]
+  },
+  {
+    name: "~", type:"folder", scope:"personal",
+    children: [
+      { name: ".claude/skills/", type:"folder", scope:"personal",
+        desc: "Your personal skills. Available across every project on this machine — but NOT in Cowork or cloud sessions unless you separately enable them for your claude.ai account (see the Synced branch below).",
+        kv: [["Scope","All your local projects"],["Cowork / cloud sessions","Not loaded from here — see Synced"]],
+        children: [
+          { name: "summarize-changes/", type:"folder", scope:"personal",
+            desc: "Each skill is its own directory. The directory name becomes the command you type — e.g. this folder gives you /summarize-changes. The frontmatter name field only sets the display label in listings; for a personal or project skill it doesn't change the command.",
+            children: [
+              { name: "SKILL.md", type:"file", scope:"personal",
+                tag: "required — the only mandatory file",
+                desc: "YAML frontmatter between --- markers, then markdown instructions. Only description is recommended — everything else is optional. Claude keeps the description in context at all times so it knows when to reach for the skill, and loads the full body only once the skill is actually invoked.",
+                kv: [["Target size","Under 500 lines"],["Body loads","Only when invoked, then stays in context"],["Frontmatter fields","name, description, disable-model-invocation, user-invocable, allowed-tools, context, model, paths, and more"]],
+                examples: [
+                  { label: "This exact skill's SKILL.md — note it explicitly links reference.md and runs scripts/helper.py below; neither file does anything unless SKILL.md says so", code: "---\ndescription: Summarizes uncommitted changes and flags anything risky. Use when the user asks what changed or wants a commit message.\n---\n\n## Current changes\n!`git diff HEAD`\n\n## Instructions\nSummarize the diff above in 2-3 bullets, then list any risks such as missing error handling or hardcoded values.\nFor the full risk-flagging checklist, see [reference.md](reference.md).\nFor a stats breakdown of the diff (files touched, lines added/removed), run:\n`${CLAUDE_SKILL_DIR}/scripts/helper.py`" },
+                  { label: "A different, unrelated skill — shown only to illustrate disable-model-invocation (not part of this folder)", code: "---\nname: deploy\ndescription: Deploy the application to production\ndisable-model-invocation: true\nallowed-tools: Bash(git push *)\n---\n\nDeploy $ARGUMENTS to production:\n1. Run the test suite\n2. Build the application\n3. Push to the deployment target\n4. Verify the deployment succeeded" }
+                ]
+              },
+              { name: "reference.md", type:"file", scope:"personal",
+                tag: "only found because SKILL.md links it",
+                desc: "This file has no effect on its own — it's just sitting on disk. Claude only knows it exists because the SKILL.md above contains the line \"see [reference.md](reference.md)\". If that link were removed, Claude would never open this file, no matter how relevant its content is.",
+                kv: [["Loads","Only when Claude reads it, and only if SKILL.md links it"]]
+              },
+              { name: "scripts/helper.py", type:"file", scope:"personal",
+                tag: "only runs because SKILL.md tells Claude to",
+                desc: "Claude never reads this script's code into context — it only runs it, and only because SKILL.md's instructions explicitly say to. ${CLAUDE_SKILL_DIR} in that instruction resolves to this exact folder at runtime, so the same line works whether the skill is installed at the personal, project, or plugin level.",
+                snippetLabel: "The line in SKILL.md that actually invokes this file",
+                snippet: "For a stats breakdown of the diff, run:\n`${CLAUDE_SKILL_DIR}/scripts/helper.py`"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    name: "your-project/", type:"folder", scope:"project",
+    children: [
+      { name: ".claude/skills/", type:"folder", scope:"project",
+        desc: "Project skills. Commit these to version control so everyone who clones the repo gets them. Discovered from the directory where you start Claude Code and every parent directory up to the repository root.",
+        kv: [["Scope","Everyone who works in this repo"],["Priority","Below personal, below enterprise"]],
+        children: [
+          { name: "deploy/SKILL.md", type:"file", scope:"project",
+            tag: "shadowed if a personal skill shares the name",
+            desc: "With a deploy skill in both ~/.claude/skills/ and here, typing /deploy runs the personal one, not this project one — enterprise beats personal beats project when names collide." },
+          { name: "run-staging/SKILL.md", type:"file", scope:"project",
+            tag: "avoid the name 'synced'",
+            desc: "Don't name a skill folder synced, in any capitalization. Claude Code reserves ~/.claude/skills/synced/ for skills downloaded from your claude.ai account, and silently skips a same-named skill you author in the enterprise, personal, or project locations." }
+        ]
+      },
+      { name: "packages/frontend/.claude/skills/", type:"folder", scope:"project",
+        tag: "nested — loads on demand",
+        desc: "A .claude/skills/ placed inside a subdirectory instead of the repo root. Unlike the root folder, this does NOT load at session startup — it loads the first time Claude reads or edits a file inside packages/frontend/, then stays available for the rest of the session.",
+        kv: [["Loads","On first file touch under this subdir"],["Name clash with root skill","Both stay available — this one runs as /packages/frontend:deploy"]],
+        children: [
+          { name: "deploy/SKILL.md", type:"file", scope:"project",
+            desc: "Same SKILL.md format as any other skill. If a root-level deploy skill also exists, Claude Code lists both and is told to use whichever directory's files it's actually working on." }
+        ]
+      },
+      { name: "(--add-dir path)/.claude/skills/", type:"folder", scope:"project",
+        tag: "additional directory, not on disk in the repo",
+        desc: "Skills in a directory you attach with --add-dir or /add-dir, loaded for that session only. The Agent SDK's additionalDirectories (TypeScript) or add_dirs (Python) options load the same way, since they pass through as --add-dir under the hood.",
+        kv: [["Scope","This session only"],["Also loads","Its .claude/commands/ and .claude/agents/ — but those aren't watched for live edits"]]
+      }
+    ]
+  },
+  {
+    name: "my-plugin/", type:"folder", scope:"plugin",
+    children: [
+      { name: "skills/", type:"folder", scope:"plugin",
+        desc: "Skills bundled with a Claude Code plugin. They work exactly like personal or project skills, but are namespaced by the plugin, so they never collide with a same-named local skill — both stay available side by side.",
+        kv: [["Loads","Wherever the plugin is enabled"],["Invoked as","/plugin-name:skill-name"]],
+        children: [
+          { name: "review/SKILL.md", type:"file", scope:"plugin",
+            desc: "The command's last segment comes from the frontmatter name field, falling back to the directory name, always prefixed with the plugin name. name: fancy here becomes /my-plugin:fancy — and bare /fancy also works unless another command already claims it.",
+            kv: [["Example","my-plugin/skills/review/SKILL.md → /my-plugin:review"]]
+          }
+        ]
+      },
+      { name: "SKILL.md", type:"file", scope:"plugin",
+        tag: "plugin-root skill — alternative to a skills/ folder",
+        desc: "A plugin can put a single SKILL.md at its own root instead of a skills/ subdirectory. There's no skill directory to name the command after, so frontmatter name supplies the whole final segment, falling back to the plugin's own directory name." }
+    ]
+  },
+  {
+    name: "claude.ai account", type:"folder", scope:"synced",
+    tag: "skills enabled in claude.ai settings",
+    desc: "Skills you've turned on for your claude.ai account. Cowork and cloud sessions (including routines) load these automatically at session start and never read ~/.claude/skills/ on your machine at all.",
+    kv: [["Cowork / cloud sessions","Loaded automatically — no local setup"],["Ordinary local sessions","Only after a one-time manual sync — see child node"]],
+    children: [
+      { name: "~/.claude/skills/synced/<skill-name>/SKILL.md", type:"file", scope:"synced",
+        tag: "downloaded copy — local sessions only",
+        desc: "For an ordinary local session to see a synced skill, you run Claude Code once in non-interactive mode with CLAUDE_CODE_SYNC_SKILLS=1 to download it here; after that, every local session under the same claude.ai sign-in loads it. Claude Code never runs this skill's shell-injection commands on your machine — it substitutes a placeholder instead.",
+        kv: [["Name clash with any other command","The other command wins — the synced skill is skipped"]],
+        snippetLabel: "One-time download into a local session",
+        snippet: "CLAUDE_CODE_SYNC_SKILLS=1 claude -p \"List the skills you have available\""
+      }
+    ]
+  }
+];
+
+const SCOPES = {
+  managed:  { label: "Enterprise",         color: "var(--c-managed)" },
+  personal: { label: "Personal",           color: "var(--c-personal)" },
+  project:  { label: "Project",            color: "var(--c-project)" },
+  plugin:   { label: "Plugin",             color: "var(--c-plugin)" },
+  synced:   { label: "Synced (claude.ai)", color: "var(--c-synced)" }
+};
+
+const treeEl = document.getElementById('tree');
+const detailEl = document.getElementById('detail');
+const legendEl = document.getElementById('legend');
+let activeRow = null;
+let activeScope = null;
+
+function esc(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function highlightSnippet(s){
+  return esc(s)
+    .replace(/^(#.*)$/gm, '<span class="c1">$1</span>')
+    .replace(/(---)/g, '<span class="c1">$1</span>')
+    .replace(/^(disable-model-invocation:|allowed-tools:|context:|name:)/gm, '<span class="c2">$1</span>');
+}
+
+function buildNode(node, depth){
+  const li = document.createElement('div');
+  li.className = 'node';
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.dataset.scope = node.scope;
+  if(node.type === 'folder') row.classList.add('folder-row');
+  if(node.children) row.classList.add('expandable-row');
+
+  const caret = document.createElement('span');
+  caret.className = 'caret' + (node.children ? '' : ' leaf');
+  caret.textContent = '▶';
+  row.appendChild(caret);
+
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.style.setProperty('--chip', SCOPES[node.scope] ? SCOPES[node.scope].color : 'var(--muted)');
+  row.appendChild(chip);
+
+  const name = document.createElement('span');
+  name.className = 'name' + (node.type === 'folder' ? ' folder' : '');
+  name.textContent = node.name;
+  row.appendChild(name);
+
+  if(node.tag){
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = '// ' + node.tag;
+    row.appendChild(tag);
+  }
+
+  li.appendChild(row);
+
+  let childWrap = null;
+  if(node.children){
+    childWrap = document.createElement('div');
+    childWrap.className = 'children';
+    node.children.forEach(c => childWrap.appendChild(buildNode(c, depth+1)));
+    li.appendChild(childWrap);
+  }
+
+  row.addEventListener('click', (e) => {
+    if(node.children){
+      row.classList.toggle('open');
+      childWrap.classList.toggle('show');
+    }
+    if(node.desc){
+      showDetail(node, row);
+    }
+  });
+
+  return li;
+}
+
+function showDetail(node, row){
+  if(activeRow) activeRow.classList.remove('active');
+  row.classList.add('active');
+  activeRow = row;
+
+  const scope = SCOPES[node.scope] || { label: node.scope, color: 'var(--muted)' };
+
+  let html = '';
+  html += `<div class="detail-path">${esc(node.name)}</div>`;
+  html += `<div class="detail-scope"><span class="dot" style="background:${scope.color}"></span>${scope.label}</div>`;
+  html += `<p>${esc(node.desc)}</p>`;
+
+  if(node.kv && node.kv.length){
+    html += '<dl class="kv">';
+    node.kv.forEach(([k,v]) => {
+      html += `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`;
+    });
+    html += '</dl>';
+  }
+
+  if(node.examples && node.examples.length){
+    node.examples.forEach(ex => {
+      if(ex.label){
+        html += `<div class="snippet-label">${esc(ex.label)}</div>`;
+      }
+      html += `<div class="snippet">${highlightSnippet(ex.code)}</div>`;
+    });
+  } else if(node.snippet){
+    if(node.snippetLabel){
+      html += `<div class="snippet-label">${esc(node.snippetLabel)}</div>`;
+    }
+    html += `<div class="snippet">${highlightSnippet(node.snippet)}</div>`;
+  }
+
+  detailEl.innerHTML = html;
+}
+
+DATA.forEach(n => treeEl.appendChild(buildNode(n, 0)));
+
+// legend
+Object.entries(SCOPES).forEach(([key, s]) => {
+  const btn = document.createElement('button');
+  btn.innerHTML = `<span class="dot" style="--dot:${s.color}"></span>${s.label}`;
+  btn.addEventListener('click', () => {
+    if(activeScope === key){
+      activeScope = null;
+      document.querySelectorAll('.legend button').forEach(b => b.classList.remove('dim'));
+      document.querySelectorAll('.row').forEach(r => r.style.opacity = 1);
+    } else {
+      activeScope = key;
+      // auto-expand everything so matching nodes buried in collapsed
+      // folders actually become visible, not just un-dimmed
+      document.querySelectorAll('.children').forEach(c => c.classList.add('show'));
+      document.querySelectorAll('.row.expandable-row').forEach(r => r.classList.add('open'));
+
+      document.querySelectorAll('.legend button').forEach(b => b.classList.toggle('dim', b !== btn));
+      document.querySelectorAll('.row').forEach(r => {
+        r.style.opacity = (r.dataset.scope === key) ? 1 : 0.25;
+      });
+    }
+  });
+  legendEl.appendChild(btn);
+});
+
+document.getElementById('expandAll').addEventListener('click', () => {
+  document.querySelectorAll('.children').forEach(c => c.classList.add('show'));
+  document.querySelectorAll('.row.expandable-row').forEach(r => r.classList.add('open'));
+});
+document.getElementById('collapseAll').addEventListener('click', () => {
+  document.querySelectorAll('.children').forEach(c => c.classList.remove('show'));
+  document.querySelectorAll('.row.expandable-row').forEach(r => r.classList.remove('open'));
+});
+</script>
+</body>
+</html>

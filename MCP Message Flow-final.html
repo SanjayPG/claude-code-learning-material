@@ -1,0 +1,648 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>MCP Message Flow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: header, scene tabs, one wide diagram stage, then narration and wire message side by side. */
+:root{
+  --bg:#F3F5F7; --surface:#FFFFFF; --ink:#14202E; --muted:#566677; --line:#CBD4DD;
+  --mcp:#2250C8; --mcp-soft:#E4ECFD;
+  --api:#A85A06; --api-soft:#FBEBD6;
+  --srv:#0C727C; --srv-soft:#D8EFF1;
+  --llm:#7A3AA6; --llm-soft:#F0E5F7;
+  --code-bg:#EAEFF3; --on-solid:#FFFFFF;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E151D; --surface:#16202B; --ink:#E6EDF3; --muted:#9DADBD; --line:#2B3947;
+    --mcp:#7DA2FF; --mcp-soft:#1B2A4D;
+    --api:#F0A04B; --api-soft:#3A2A14;
+    --srv:#4FC3CC; --srv-soft:#12363A;
+    --llm:#C79BE8; --llm-soft:#2E1F3B;
+    --code-bg:#0B1118; --on-solid:#0E151D;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E151D; --surface:#16202B; --ink:#E6EDF3; --muted:#9DADBD; --line:#2B3947;
+  --mcp:#7DA2FF; --mcp-soft:#1B2A4D;
+  --api:#F0A04B; --api-soft:#3A2A14;
+  --srv:#4FC3CC; --srv-soft:#12363A;
+  --llm:#C79BE8; --llm-soft:#2E1F3B;
+  --code-bg:#0B1118; --on-solid:#0E151D;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:24px 40px}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(1.7rem,3.8vw,2.5rem);line-height:1.08;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.lede{color:var(--muted);max-width:65ch;margin:8px 0 0}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin-top:20px;border-bottom:1px solid var(--line)}
+.tab{appearance:none;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);font:inherit;font-weight:600;padding:10px 14px 9px;cursor:pointer;text-align:left;white-space:nowrap;display:flex;flex-direction:column;gap:2px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--mcp)}
+.tab:focus-visible{outline:2px solid var(--mcp);outline-offset:-2px}
+.stage{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px}
+.fig{margin:0}
+.scroll{overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:760px;height:auto}
+.cap{font-size:13px;color:var(--muted);margin:8px 4px 0;max-width:80ch}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.btn{font:inherit;font-weight:500;padding:7px 14px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--mcp);border-color:var(--mcp);color:var(--on-solid)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn:focus-visible{outline:2px solid var(--mcp);outline-offset:2px}
+.stepctr{font-family:var(--font-mono);font-size:13px;color:var(--muted);margin-left:auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;color:var(--muted);margin-top:12px}
+.sw{display:inline-block;width:22px;border-top:3px solid var(--c);vertical-align:middle;margin-right:6px}
+.notes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:16px}
+@media (max-width:820px){.notes{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;min-width:0}
+.eyebrow{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:flex;gap:8px;align-items:center;justify-content:space-between}
+.panel h2{font-family:var(--font-display);font-weight:600;font-size:1.3rem;line-height:1.2;margin:4px 0 10px;text-wrap:balance}
+.panel p{margin:0 0 10px;max-width:65ch}
+.panel ul{margin:8px 0 0;padding-left:20px}
+.panel li{margin-bottom:6px}
+.notes.one{grid-template-columns:minmax(0,1fr)}
+.points{margin:4px 0 0;padding-left:22px;font-size:18px}
+.points li{margin-bottom:8px}
+.pn-row{display:flex;justify-content:flex-end;margin-top:10px}
+.btn.quiet{font-size:13px;padding:5px 12px;color:var(--muted)}
+.presenter{margin-top:12px;border:2px dashed var(--line);background:var(--bg)}
+.cuehead{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:12px 0 4px}
+pre.wire{margin:8px 0 0;background:var(--code-bg);border-radius:6px;padding:12px;overflow-x:auto;font-family:var(--font-mono);font-size:13px;line-height:1.5;color:var(--ink)}
+.wirenote{font-size:13px;color:var(--muted);margin:10px 0 0}
+code{font-family:var(--font-mono);font-size:.92em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+.copy{font:inherit;font-size:12px;padding:2px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;text-transform:none;letter-spacing:0}
+
+svg text{font-family:var(--font-body)}
+.mono{font-family:var(--font-mono)}
+.lifeline{stroke:var(--line);stroke-width:1.5;stroke-dasharray:4 5;fill:none}
+.box{fill:var(--cs,var(--surface));stroke:var(--c,var(--ink));stroke-width:1.6}
+.box.dash{stroke-dasharray:6 5}
+.c-user{--c:var(--ink);--cs:var(--surface)}
+.c-llm{--c:var(--llm);--cs:var(--llm-soft)}
+.c-host{--c:var(--mcp);--cs:var(--mcp-soft)}
+.c-srv{--c:var(--srv);--cs:var(--srv-soft)}
+.c-api{--c:var(--api);--cs:var(--api-soft)}
+.nm{font-size:14px;font-weight:600;fill:var(--ink);text-anchor:middle}
+.sb{font-size:11.5px;fill:var(--muted);text-anchor:middle}
+.k-user{--c:var(--ink)} .k-llm{--c:var(--llm)} .k-mcp{--c:var(--mcp)} .k-rest{--c:var(--api)}
+.ln{stroke:var(--c);stroke-width:2;fill:none}
+.ln.ret{stroke-dasharray:7 5}
+.ah{fill:var(--c)}
+.msg{transition:opacity .25s}
+.msg.future{opacity:.2}
+.msg.past{opacity:.75}
+.msg.now,.msg.all{opacity:1}
+.msg.now .ln{stroke-width:3}
+.msg{cursor:pointer}
+.lbl{font-family:var(--font-mono);font-size:13px;fill:var(--ink);text-anchor:middle}
+.lblbg{fill:var(--surface)}
+.num{fill:var(--surface);stroke:var(--c);stroke-width:1.6}
+.numt{font-size:11px;font-weight:600;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+.msg.now .num{fill:var(--c)}
+.msg.now .numt{fill:var(--on-solid)}
+.msg:focus{outline:none}
+.msg:focus-visible .num{stroke-width:3.5}
+[hidden]{display:none!important}
+.tk-c{color:var(--muted);font-style:italic}
+.tk-k{color:var(--mcp);font-weight:500}
+.tk-s{color:var(--srv)}
+.tk-n{color:var(--api)}
+.tk-w{color:var(--llm);font-weight:500}
+.tk-f{color:var(--api);font-weight:600}
+#side.wide{grid-column:1/-1}
+.btn.mcpb[aria-pressed="true"]{background:var(--mcp);border-color:var(--mcp);color:var(--on-solid)}
+.svc{cursor:pointer}
+.svc:focus{outline:none}
+.svc:hover .box{stroke-width:3}
+.svc.sel .box{stroke-width:4;fill:var(--api-soft);filter:drop-shadow(0 0 5px var(--api))}
+.svc:focus-visible .box{stroke-width:4;stroke-dasharray:6 4}
+.apinote{font-size:13px;color:var(--muted);margin:10px 0 0}
+.apilink{display:inline-block;margin-top:10px;text-decoration:none}
+a.btn.apilink{color:var(--ink)}
+.bus{fill:var(--mcp-soft);stroke:var(--mcp);stroke-width:1.6}
+.big{font-family:var(--font-display);font-weight:700;font-size:56px;fill:var(--mcp);text-anchor:middle}
+.tag{font-family:var(--font-mono);font-size:12px;fill:var(--api);text-anchor:middle}
+@media (prefers-reduced-motion:reduce){.msg{transition:none}}
+</style>
+
+<div class="wrap">
+  <h1>MCP, message by message</h1>
+  <p class="lede">Why AI apps need MCP, and every message that travels when you ask an assistant for a bug in Azure DevOps.</p>
+
+  <div class="tabs" role="tablist" aria-label="Video scenes" id="tabs"></div>
+
+  <div class="stage">
+    <div id="figs">
+      <figure class="fig" id="fig-hook" hidden>
+        <div class="scroll">
+          <svg viewBox="0 0 960 300" role="img" aria-label="An AI assistant connects to GitHub, Azure DevOps and Jira through an unnamed layer in between, which turns out to be MCP.">
+            <rect class="box c-llm" x="30" y="100" width="190" height="100" rx="8"/>
+            <text class="nm" x="125" y="146">AI assistant</text>
+            <text class="sb" x="125" y="168">model plus app</text>
+            <line class="ln k-user" x1="220" y1="150" x2="380" y2="150"/>
+            <rect class="box c-host dash" x="380" y="80" width="200" height="140" rx="10"/>
+            <text class="big" id="hookq" x="480" y="162">?</text>
+            <text class="sb" id="hookl" x="480" y="198">the layer in between</text>
+            <line class="ln k-mcp" x1="580" y1="150" x2="740" y2="57"/>
+            <line class="ln k-mcp" x1="580" y1="150" x2="740" y2="147"/>
+            <line class="ln k-mcp" x1="580" y1="150" x2="740" y2="237"/>
+            <rect class="box c-api" x="740" y="30" width="190" height="54" rx="8"/>
+            <text class="nm" x="835" y="63">GitHub</text>
+            <rect class="box c-api" x="740" y="120" width="190" height="54" rx="8"/>
+            <text class="nm" x="835" y="153">Azure DevOps</text>
+            <rect class="box c-api" x="740" y="210" width="190" height="54" rx="8"/>
+            <text class="nm" x="835" y="243">Jira</text>
+            <text class="sb" x="835" y="288">databases, Slack and more</text>
+          </svg>
+        </div>
+        <figcaption class="cap">The model is not wired straight to the services. Something sits between them, and that something is MCP.</figcaption>
+      </figure>
+
+      <figure class="fig" id="fig-problem" hidden>
+        <div class="scroll">
+          <svg viewBox="0 0 960 380" role="img" aria-label="Three AI apps each connect to three services with separate custom code, giving nine integrations.">
+            <g id="mesh"></g>
+            <rect class="box c-user" x="30" y="38" width="200" height="64" rx="8"/>
+            <text class="nm" x="130" y="66">Your agent</text><text class="sb" x="130" y="86">custom code per service</text>
+            <rect class="box c-user" x="30" y="158" width="200" height="64" rx="8"/>
+            <text class="nm" x="130" y="186">Chat assistant</text><text class="sb" x="130" y="206">custom code per service</text>
+            <rect class="box c-user" x="30" y="278" width="200" height="64" rx="8"/>
+            <text class="nm" x="130" y="306">IDE copilot</text><text class="sb" x="130" y="326">custom code per service</text>
+            <g class="svc" data-svc="ado" tabindex="0" role="button" aria-pressed="false" aria-label="Azure DevOps: show its API for getting one bug">
+              <rect class="box c-api" x="730" y="38" width="200" height="64" rx="8"/>
+              <text class="nm" x="830" y="66">Azure DevOps</text><text class="sb" x="830" y="86">own auth, own schema</text>
+            </g>
+            <g class="svc" data-svc="gh" tabindex="0" role="button" aria-pressed="false" aria-label="GitHub: show its API for getting one issue">
+              <rect class="box c-api" x="730" y="158" width="200" height="64" rx="8"/>
+              <text class="nm" x="830" y="186">GitHub</text><text class="sb" x="830" y="206">own auth, own schema</text>
+            </g>
+            <g class="svc" data-svc="jira" tabindex="0" role="button" aria-pressed="false" aria-label="Jira: show its API for getting one issue">
+              <rect class="box c-api" x="730" y="278" width="200" height="64" rx="8"/>
+              <text class="nm" x="830" y="306">Jira</text><text class="sb" x="830" y="326">own auth, own schema</text>
+            </g>
+            <rect x="350" y="164" width="260" height="52" rx="26" fill="var(--surface)" stroke="var(--api)" stroke-width="1.8"/>
+            <text class="nm" x="480" y="187">3 apps × 3 services</text>
+            <text class="sb" x="480" y="205" style="fill:var(--api)">= 9 integrations to write</text>
+          </svg>
+        </div>
+        <figcaption class="cap">Every app writes its own code for every service, so the work multiplies. A fourth service means another integration in every app. <b>Click a service to see its real API.</b></figcaption>
+      </figure>
+
+      <figure class="fig" id="fig-mcp" hidden>
+        <div class="scroll">
+          <svg viewBox="0 0 960 395" role="img" aria-label="Three AI apps speak one MCP protocol to three MCP servers, and each server calls its own service's REST API.">
+            <line class="ln k-mcp" x1="210" y1="70" x2="392" y2="70"/>
+            <line class="ln k-mcp" x1="210" y1="190" x2="392" y2="190"/>
+            <line class="ln k-mcp" x1="210" y1="310" x2="392" y2="310"/>
+            <line class="ln k-mcp" x1="408" y1="70" x2="470" y2="70"/>
+            <line class="ln k-mcp" x1="408" y1="190" x2="470" y2="190"/>
+            <line class="ln k-mcp" x1="408" y1="310" x2="470" y2="310"/>
+            <rect class="bus" x="392" y="40" width="16" height="300" rx="8"/>
+            <text class="nm" x="400" y="28" style="fill:var(--mcp)">MCP</text>
+            <text class="sb" x="400" y="360">same protocol on every link</text>
+            <rect class="box c-user" x="20" y="38" width="190" height="64" rx="8"/>
+            <text class="nm" x="115" y="66">Your agent</text><text class="sb" x="115" y="86">MCP client built in</text>
+            <rect class="box c-user" x="20" y="158" width="190" height="64" rx="8"/>
+            <text class="nm" x="115" y="186">Chat assistant</text><text class="sb" x="115" y="206">MCP client built in</text>
+            <rect class="box c-user" x="20" y="278" width="190" height="64" rx="8"/>
+            <text class="nm" x="115" y="306">IDE copilot</text><text class="sb" x="115" y="326">MCP client built in</text>
+            <rect class="box c-srv" x="470" y="38" width="230" height="64" rx="8"/>
+            <text class="nm" x="585" y="66">Azure DevOps MCP server</text><text class="sb" x="585" y="86">tools, auth and REST calls</text>
+            <rect class="box c-srv" x="470" y="158" width="230" height="64" rx="8"/>
+            <text class="nm" x="585" y="186">GitHub MCP server</text><text class="sb" x="585" y="206">tools, auth and REST calls</text>
+            <rect class="box c-srv" x="470" y="278" width="230" height="64" rx="8"/>
+            <text class="nm" x="585" y="306">Jira MCP server</text><text class="sb" x="585" y="326">tools, auth and REST calls</text>
+            <line class="ln k-rest" x1="700" y1="70" x2="790" y2="70"/>
+            <line class="ln k-rest" x1="700" y1="190" x2="790" y2="190"/>
+            <line class="ln k-rest" x1="700" y1="310" x2="790" y2="310"/>
+            <text class="tag" x="745" y="60">REST</text>
+            <text class="tag" x="745" y="180">REST</text>
+            <text class="tag" x="745" y="300">REST</text>
+            <rect class="box c-api" x="790" y="38" width="150" height="64" rx="8"/>
+            <text class="nm" x="865" y="66">Azure DevOps</text><text class="sb" x="865" y="86">REST API</text>
+            <rect class="box c-api" x="790" y="158" width="150" height="64" rx="8"/>
+            <text class="nm" x="865" y="186">GitHub</text><text class="sb" x="865" y="206">REST API</text>
+            <rect class="box c-api" x="790" y="278" width="150" height="64" rx="8"/>
+            <text class="nm" x="865" y="306">Jira</text><text class="sb" x="865" y="326">REST API</text>
+            <text class="sb" x="480" y="388" style="font-size:13px">3 servers written once, plus one MCP client per app</text>
+          </svg>
+        </div>
+        <figcaption class="cap">Each integration lives in one server. Every app reaches every server with the same protocol, so the work adds up instead of multiplying.</figcaption>
+      </figure>
+
+      <figure class="fig" id="fig-flow" hidden>
+        <div class="scroll">
+          <svg id="flowsvg" viewBox="0 0 960 540" role="img" aria-label="Sequence diagram of one MCP request: discovery with tools/list, the model choosing get_bug, a tools/call to the MCP server, the server's REST call to Azure DevOps, and the result returning to the model and the user."></svg>
+        </div>
+        <figcaption class="cap">One request, twelve messages. Click a number to jump to that step.</figcaption>
+      </figure>
+    </div>
+
+    <div class="controls" id="ctl-hook" hidden>
+      <button class="btn primary" id="reveal" type="button" aria-pressed="false">Reveal the layer</button>
+    </div>
+    <div class="controls" id="ctl-problem" hidden>
+      <button class="btn primary" id="showcode" type="button" aria-pressed="false">Show the code</button>
+    </div>
+    <div class="controls" id="ctl-mcp" hidden>
+      <button class="btn mcpb" type="button" data-k="fmt" aria-pressed="false">1 · The message format</button>
+      <button class="btn mcpb" type="button" data-k="list" aria-pressed="false">2 · tools/list</button>
+      <button class="btn mcpb" type="button" data-k="call" aria-pressed="false">3 · tools/call</button>
+      <button class="btn mcpb" type="button" data-k="swap" aria-pressed="false">4 · Swap the server</button>
+    </div>
+    <div class="controls" id="ctl-flow" hidden>
+      <button class="btn" id="prev" type="button">Back</button>
+      <button class="btn primary" id="next" type="button">Next</button>
+      <button class="btn" id="play" type="button">Play</button>
+      <span class="stepctr" id="stepctr" aria-live="polite"></span>
+    </div>
+    <div class="legend" id="legend" hidden>
+      <span style="--c:var(--mcp)"><i class="sw"></i>MCP message</span>
+      <span style="--c:var(--api)"><i class="sw"></i>Service's own REST API</span>
+      <span style="--c:var(--llm)"><i class="sw"></i>Model's own message format</span>
+      <span style="--c:var(--ink)"><i class="sw"></i>What the user sees</span>
+    </div>
+  </div>
+
+  <div class="notes" id="notes">
+    <section class="panel" aria-live="polite">
+      <div class="eyebrow" id="eyebrow"></div>
+      <h2 id="ntitle"></h2>
+      <div id="nbody"></div>
+    </section>
+    <section class="panel" id="side"></section>
+  </div>
+  <div class="pn-row"><button class="btn quiet" id="pnbtn" type="button" aria-expanded="false">Show presenter notes</button></div>
+  <section class="panel presenter" id="presenter" hidden>
+    <div class="eyebrow"><span>Presenter notes · not for the audience</span></div>
+    <div id="pbody"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var NS='http://www.w3.org/2000/svg';
+  function S(tag,attrs,parent,text){
+    var e=document.createElementNS(NS,tag);
+    for(var k in attrs){e.setAttribute(k,attrs[k]);}
+    if(text!=null){e.textContent=text;}
+    if(parent){parent.appendChild(e);}
+    return e;
+  }
+
+  /* ---------- problem scene: nine custom lines ---------- */
+  var mesh=document.getElementById('mesh');
+  var ys=[70,190,310];
+  ys.forEach(function(a){ys.forEach(function(b){
+    var g=S('g',{class:'k-rest'},mesh);
+    S('line',{class:'ln',x1:230,y1:a,x2:730,y2:b,style:'stroke-width:1.6;opacity:.7'},g);
+  });});
+
+  /* ---------- flow scene ---------- */
+  var lanes=[
+    {id:'user',x:70,name:'User',sub:'you'},
+    {id:'llm',x:250,name:'Claude',sub:'the model'},
+    {id:'host',x:470,name:'Claude Code',sub:'host · MCP client'},
+    {id:'srv',x:690,name:'MCP server',sub:'Azure DevOps'},
+    {id:'api',x:880,name:'Azure DevOps',sub:'REST API'}
+  ];
+  var LX={};lanes.forEach(function(l){LX[l.id]=l.x;});
+  var Y0=118,DY=34;
+  var flow=document.getElementById('flowsvg');
+  lanes.forEach(function(l){S('line',{class:'lifeline',x1:l.x,x2:l.x,y1:66,y2:522},flow);});
+  lanes.forEach(function(l){
+    var g=S('g',{class:'c-'+({user:'user',llm:'llm',host:'host',srv:'srv',api:'api'}[l.id])},flow);
+    S('rect',{class:'box',x:l.x-66,y:14,width:132,height:52,rx:8},g);
+    S('text',{class:'nm',x:l.x,y:36},g,l.name);
+    S('text',{class:'sb',x:l.x,y:54},g,l.sub);
+  });
+
+  var MSGS=[
+    {f:'host',t:'srv', l:'tools/list',k:'mcp'},
+    {f:'srv', t:'host',l:'tool definitions',k:'mcp',ret:1},
+    {f:'user',t:'host',l:'"Find bug 123 in Azure DevOps"',k:'user'},
+    {f:'host',t:'llm', l:'prompt + tool list',k:'llm'},
+    {f:'llm', t:'host',l:'tool_use get_bug(123)',k:'llm',ret:1},
+    {f:'host',t:'srv', l:'tools/call get_bug(123)',k:'mcp'},
+    {f:'srv', t:'api', l:'GET workitems/123',k:'rest'},
+    {f:'api', t:'srv', l:'work item JSON',k:'rest',ret:1},
+    {f:'srv', t:'host',l:'result: content[ text ]',k:'mcp',ret:1},
+    {f:'host',t:'llm', l:'tool_result',k:'llm'},
+    {f:'llm', t:'host',l:'final answer',k:'llm',ret:1},
+    {f:'host',t:'user',l:'"Bug 123: Login button not working"',k:'user',ret:1}
+  ];
+  var groups=[],lblRefs=[];
+  MSGS.forEach(function(m,i){
+    var y=Y0+DY*i;
+    var s=LX[m.t]>LX[m.f]?1:-1;
+    var x1=LX[m.f]+s*8, tip=LX[m.t]-s*8;
+    var g=S('g',{class:'msg future k-'+m.k,'data-i':i,role:'button',tabindex:0,'aria-label':'Step '+(i+1)+': '+m.l},flow);
+    S('line',{class:'ln'+(m.ret?' ret':''),x1:x1,y1:y,x2:tip-s*8,y2:y},g);
+    S('polygon',{class:'ah',points:tip+','+y+' '+(tip-s*10)+','+(y-5)+' '+(tip-s*10)+','+(y+5)},g);
+    var mid=(x1+tip)/2;
+    var bg=S('rect',{class:'lblbg',rx:3},g);
+    var t=S('text',{class:'lbl',x:mid,y:y-7},g,m.l);
+    lblRefs.push({t:t,bg:bg,len:m.l.length,mid:mid,y:y-7});
+    S('circle',{class:'num',cx:24,cy:y,r:10},g);
+    S('text',{class:'numt',x:24,y:y},g,String(i+1));
+    g.addEventListener('click',function(){setStep(i);});
+    g.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();setStep(i);}});
+    groups.push(g);
+  });
+  function sizeBgs(){
+    lblRefs.forEach(function(r){
+      var x=0,w=0,y=0,h=0;
+      try{var b=r.t.getBBox();x=b.x;w=b.width;y=b.y;h=b.height;}catch(e){}
+      if(!w){w=r.len*7.9;x=r.mid-w/2;y=r.y-12;h=16;}
+      r.bg.setAttribute('x',x-5);r.bg.setAttribute('y',y-1);
+      r.bg.setAttribute('width',w+10);r.bg.setAttribute('height',h+2);
+    });
+  }
+
+  /* ---------- narration data ---------- */
+  var SCENES=[
+    {id:'hook',label:'Hook',fig:'fig-hook',
+     title:'There is a layer in between',points:["You ask Claude to find a bug in Azure DevOps.", "The model doesn't call the Azure DevOps API itself.", "A layer called MCP sits in between."],
+     paras:[
+       'You ask Claude to find a bug in Azure DevOps, and it does. Most people assume the model calls the Azure DevOps API itself.',
+       'It doesn\'t. There is a layer in between, and it\'s called <code>MCP</code>, the Model Context Protocol.',
+       'In this video I\'ll show what problem MCP solves, then follow one real request message by message.'],
+     cues:['Show the assistant, the dashed <code>?</code> box and the three services.','Press <b>Reveal the layer</b> as you say the name MCP.','Mention that databases and Slack plug in the same way.']},
+    {id:'problem',label:'The problem',fig:'fig-problem',
+     title:'Every app rebuilds every integration',points:["Each service has its own API, authentication and response format.", "Problem 1, development effort: learn each service's authentication, endpoints, request and response formats, and schemas.", "Problem 2, maintenance: when an API changes, the integration code has to be updated.", "3 apps × 3 services = 9 integrations, and both efforts keep growing."],
+     paras:[
+       'Imagine you\'re building an AI application and you want your AI to work with three systems: Azure DevOps, GitHub and Jira. Each system has its own API. Azure DevOps has one API structure, GitHub has its own, and Jira has another.',
+       'So your AI application needs custom integration code for each system. For example, if I want my AI to get a bug from Azure DevOps, I might write code like this.',
+       'And there are two main problems with this approach. First is the development effort. The developer needs to understand each service\'s API: its authentication, endpoints, request formats, response formats and schemas.',
+       'Second is maintenance. These integrations are not something you write once and forget. If Azure DevOps, GitHub or Jira changes its API, the developer has to update the integration code to keep everything working.',
+       'So as we add more AI applications and more services, both the development effort and the maintenance effort keep growing. Three apps and three services is already nine integrations.'],
+     cues:['Click <b>Azure DevOps</b>, then <b>GitHub</b>, then <b>Jira</b> as you name each one. Each panel shows the same job (get one bug) in that service\'s own API.','Point at the <b>Title is at</b> line in each panel: three different places for the same value.','Point at the amber lines app by app, then land on the <code>3 × 3 = 9</code> pill.','Press <b>Show the code</b> while you say "I might write code like this". Point at the three numbered parts.','Read the two problem bullets one at a time: development effort first, then maintenance.','Finish on the right-hand column: a fourth service means one more integration in every app.']},
+    {id:'mcp',label:'What MCP changes',fig:'fig-mcp',
+     title:'Write the integration once, in a server',points:["One MCP server per service, written once.", "Every app reaches every server the same way: JSON-RPC 2.0 messages, with two standard operations, tools/list and tools/call.", "3 servers plus 1 client per app, instead of 9 integrations."],
+     paras:[
+       'MCP puts the integration code in one place: an MCP server. One server per service, written once. It holds the authentication, the endpoints and the response handling, and it exposes the result as named tools such as <code>get_bug</code> and <code>create_bug</code>.',
+       'Every AI app talks to every server the same way, through an MCP client. If you know Selenium, think of WebDriver. Your test doesn\'t know Chrome\'s internals. It speaks one protocol to a driver. MCP plays that role between an AI app and a tool.',
+       'Three apps and three services now means three servers and one client implementation per app. The work adds up instead of multiplying.'],
+     cues:['Point at the blue bar first, then the teal servers, then the amber REST arrows.','Say the WebDriver comparison while the bar is on screen.','Then press buttons 1 to 4 in order. Each one shows the JSON on screen and swaps in the matching narration here.','Servers can also expose resources and prompts. Tools are the part this video follows.']},
+    {id:'flow',label:'One real request',fig:'fig-flow',steps:true},
+    {id:'recap',label:'Big picture',fig:'fig-flow',all:true,
+     title:'A standard layer between hosts and servers',points:["Blue is MCP. Amber is the service's own REST API. Purple is the model's own format.", "MCP doesn't replace the Azure DevOps, GitHub or Jira APIs.", "It gives AI apps one standard way to discover and call tools."],
+     paras:[
+       'Follow the arrows from top to bottom. Blue is MCP. Amber is the service\'s own REST API. Purple is the model\'s own message format.',
+       'MCP doesn\'t replace the Azure DevOps, GitHub or Jira APIs. It gives AI applications one standard way to discover and use tools, so each integration is written once, in a server, and any MCP-capable app can use it.'],
+     cues:['Trace all the blue arrows, then the amber pair, then the purple ones.','End on the last row, the answer reaching the user.']}
+  ];
+
+  var PHASES=['Discovery when the app starts','Discovery when the app starts','The model picks a tool','The model picks a tool','The model picks a tool','The tool call','The tool call','The tool call','The tool call','The answer','The answer','The answer'];
+  var STEPS=[
+    {title:'The client asks what tools exist',cap:"Before any question, the client asks the server what it offers.",
+     paras:['Before anyone types a question, the app connects to the server and asks what it offers. That request is <code>tools/list</code>.'],
+     wire:{label:'MCP request, client to server',code:'{ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }',
+       note:'Simplified. The 2026-07-28 spec version is stateless, so every request also carries <code>_meta</code> with the protocol version and client capabilities, and a client can call <code>server/discover</code> first. Older versions open with an <code>initialize</code> handshake instead.'}},
+    {title:'The server lists its tools',cap:"The server returns each tool's name, description and input schema.",
+     paras:['The server answers with tool definitions: a name, a description and a JSON Schema for the input. That is how the app learns that <code>get_bug</code> exists and that it needs a <code>bug_id</code>.'],
+     wire:{label:'MCP response, server to client',code:'{\n  "jsonrpc": "2.0", "id": 1,\n  "result": { "tools": [{\n    "name": "get_bug",\n    "description": "Get a bug from Azure DevOps by ID",\n    "inputSchema": {\n      "type": "object",\n      "properties": { "bug_id": { "type": "integer" } },\n      "required": ["bug_id"]\n    }\n  }] }\n}',
+       note:'The server declares the <code>tools</code> capability and can send a list-changed notification when its tools change.'}},
+    {title:'The user asks a question',cap:"The user's question reaches the host app.",
+     paras:['Now the user types the request. It goes to the host app, which is Claude Code in this example.'],
+     wire:{label:'What the user types',code:'Find bug 123 in Azure DevOps',note:'Plain text. No protocol is involved yet.'}},
+    {title:'The host gives the model the tool list',cap:"The host sends the model the question plus the tool definitions.",
+     paras:['The host sends the prompt to the model together with the tool definitions it collected. The model has no connection to MCP. It only sees tool names, descriptions and schemas in its context. That is the whole reason it can pick <code>get_bug</code>.'],
+     wire:{label:'Model API request, host to model',code:'{\n  "messages": [{ "role": "user",\n    "content": "Find bug 123 in Azure DevOps" }],\n  "tools": [{\n    "name": "get_bug",\n    "description": "Get a bug from Azure DevOps by ID",\n    "input_schema": { "type": "object",\n      "properties": { "bug_id": { "type": "integer" } },\n      "required": ["bug_id"] }\n  }]\n}',
+       note:'Shown in the Claude Messages API shape. MCP calls the field <code>inputSchema</code>, the Messages API calls it <code>input_schema</code>, and the host translates. Claude Code also prefixes tool names, for example <code>mcp__ado__get_bug</code>.'}},
+    {title:'The model asks for get_bug',cap:"The model asks for a tool. It doesn't run anything itself.",
+     paras:['The model doesn\'t call anything. It returns a structured tool-use block that says: I want <code>get_bug</code> with <code>bug_id</code> 123. Producing that block is all the model does here.'],
+     wire:{label:'Model output, model to host',code:'{\n  "type": "tool_use",\n  "id": "toolu_01…",\n  "name": "get_bug",\n  "input": { "bug_id": 123 }\n}',note:'The id ties the later result back to this request.'}},
+    {title:'The client sends tools/call',cap:"The client forwards the request to the server as tools/call.",
+     paras:['The host checks its permissions, usually asking you to approve, and then its MCP client sends <code>tools/call</code> to the server. This is the MCP step, and it has the same shape for any server and any tool.'],
+     wire:{label:'MCP request, client to server',code:'{\n  "jsonrpc": "2.0", "id": 2,\n  "method": "tools/call",\n  "params": {\n    "name": "get_bug",\n    "arguments": { "bug_id": 123 }\n  }\n}',
+       note:'Trimmed, with the same <code>_meta</code> note as step 1. The spec says there should always be a human able to deny a tool call, which is why most hosts ask first.'}},
+    {title:'The server calls the real API',cap:"The server makes an ordinary REST call to Azure DevOps.",
+     paras:['Only now does Azure DevOps get involved. The server\'s own <code>get_bug</code> code makes an ordinary REST call using the credentials it holds. MCP does not replace this API. It sits on top of it.'],
+     wire:{label:'REST request, server to Azure DevOps',code:'GET https://dev.azure.com/{organization}/{project}/_apis/wit/workitems/123?api-version=7.1\nAuthorization: <credentials held by the server>',
+       note:'This is the normal Azure DevOps REST API.'}},
+    {title:'Azure DevOps replies',cap:"Azure DevOps replies in its own format.",
+     paras:['Azure DevOps returns the work item as JSON, in its own format, with its own field names.'],
+     wire:{label:'REST response, Azure DevOps to server',code:'{\n  "id": 123,\n  "fields": {\n    "System.WorkItemType": "Bug",\n    "System.Title": "Login button not working"\n  }\n}',note:'Trimmed to the fields this example needs.'}},
+    {title:'The server returns an MCP result',cap:"The server wraps the data as an MCP tool result.",
+     paras:['The server turns that JSON into an MCP tool result: a <code>content</code> array and an <code>isError</code> flag, so the model can tell a failure from a real answer.'],
+     wire:{label:'MCP response, server to client',code:'{\n  "jsonrpc": "2.0", "id": 2,\n  "result": {\n    "content": [{ "type": "text",\n      "text": "Bug 123: Login button not working" }],\n    "isError": false\n  }\n}',
+       note:'<code>isError: true</code> is for failures the model can read and retry. Unknown tools and malformed requests come back as JSON-RPC errors instead.'}},
+    {title:'The host hands the result to the model',cap:"The host passes the result to the model in the model API's format.",
+     paras:['The host passes the result to the model in the model API\'s own tool-result format. MCP ends at the host. The model never sees JSON-RPC.'],
+     wire:{label:'Model API message, host to model',code:'{\n  "type": "tool_result",\n  "tool_use_id": "toolu_01…",\n  "content": "Bug 123: Login button not working"\n}',note:'Same id as the tool-use block in step 5.'}},
+    {title:'The model writes the answer',cap:"The model writes the answer in plain language.",
+     paras:['With the result in its context, the model writes the reply in plain language.'],
+     wire:{label:'Model output, model to host',code:'Bug 123 is titled "Login button not working".',note:'An ordinary text response.'}},
+    {title:'The user sees the result',cap:"The user sees one question and one answer.",
+     paras:['The host shows the reply in the chat. From the user\'s side this was one question and one answer. Underneath, it was the twelve messages above.'],
+     wire:{label:'Shown in the chat',code:'Bug 123 is titled "Login button not working".',note:'End of the request.'}}
+  ];
+
+  /* ---------- state and rendering ---------- */
+  var scene='hook',step=0,timer=null,revealed=false;
+  var $=function(id){return document.getElementById(id);};
+  var tabs=$('tabs');
+  SCENES.forEach(function(s){
+    var b=document.createElement('button');
+    b.className='tab';b.type='button';b.setAttribute('role','tab');b.id='tab-'+s.id;
+    b.textContent=s.label;
+    b.addEventListener('click',function(){setScene(s.id);});
+    tabs.appendChild(b);
+  });
+
+  function stopPlay(){if(timer){clearInterval(timer);timer=null;}$('play').textContent='Play';}
+  function setStep(i){step=Math.max(0,Math.min(MSGS.length-1,i));if(scene!=='flow'){setScene('flow');return;}render();}
+
+  /* small syntax highlighter for JSON, Python and plain HTTP snippets (builds spans, never innerHTML) */
+  var TOK=/((?<![:\w])\/\/[^\n]*|#[^\n]*)|(f?"(?:\\.|[^"\\\n])*")|(\b\d+(?:\.\d+)?\b)|(\b(?:def|return|import|from|if|raise|True|False|None|true|false|null|GET)\b)|(\bdef\s+)([A-Za-z_]\w*)/g;
+  function highlight(el,text){
+    el.textContent='';var last=0,m;
+    var put=function(t,c){if(!t)return;if(!c){el.appendChild(document.createTextNode(t));return;}var s=document.createElement('span');s.className=c;s.textContent=t;el.appendChild(s);};
+    TOK.lastIndex=0;
+    while((m=TOK.exec(text))){
+      put(text.slice(last,m.index));
+      if(m[1]!==undefined){put(m[1],'tk-c');}
+      else if(m[2]!==undefined){put(m[2],/^\s*:/.test(text.slice(TOK.lastIndex))?'tk-k':'tk-s');}
+      else if(m[3]!==undefined){put(m[3],'tk-n');}
+      else if(m[4]!==undefined){put(m[4],'tk-w');}
+      else{put(m[5],'tk-w');put(m[6],'tk-f');}
+      last=TOK.lastIndex;
+    }
+    put(text.slice(last));
+  }
+  function wirePanel(w){
+    var side=$('side');side.innerHTML='';
+    var ey=document.createElement('div');ey.className='eyebrow';
+    var lab=document.createElement('span');lab.textContent=w.label;ey.appendChild(lab);
+    var cp=document.createElement('button');cp.className='copy';cp.type='button';cp.textContent='Copy';
+    ey.appendChild(cp);side.appendChild(ey);
+    var pre=document.createElement('pre');pre.className='wire';
+    var code=document.createElement('code');code.style.background='none';code.style.padding='0';highlight(code,w.code);
+    pre.appendChild(code);side.appendChild(pre);
+    var nt=document.createElement('p');nt.className='wirenote';nt.innerHTML=w.note;side.appendChild(nt);
+    cp.addEventListener('click',function(){
+      var done=function(){cp.textContent='Copied';setTimeout(function(){cp.textContent='Copy';},1400);};
+      var sel=function(){try{var r=document.createRange();r.selectNodeContents(code);var s=window.getSelection();s.removeAllRanges();s.addRange(r);}catch(e){}};
+      try{navigator.clipboard.writeText(w.code).then(done,sel);}catch(e){sel();}
+    });
+  }
+  var APIS={
+    ado:{label:'Azure DevOps · get one bug',
+      code:'GET https://dev.azure.com/{organization}/{project}\n    /_apis/wit/workitems/123?api-version=7.1\nAuthorization: Basic base64(":" + PAT)\n\n→ {\n  "id": 123,\n  "fields": {\n    "System.WorkItemType": "Bug",\n    "System.Title": "Login button not working",\n    "System.State": "Active"\n  }\n}',
+      note:'<b>Title is at:</b> <code>fields["System.Title"]</code>. Fields use dotted reference names. A personal access token (PAT) is the simple option, and OAuth is also supported. Response trimmed to three fields.',
+      url:'https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/get-work-item?view=azure-devops-rest-7.1',text:'Open the Azure DevOps API docs'},
+    gh:{label:'GitHub · get one issue',
+      code:'GET https://api.github.com/repos/{owner}/{repo}/issues/123\nAccept: application/vnd.github+json\nAuthorization: Bearer <token>\n\n→ {\n  "number": 123,\n  "title": "Login button not working",\n  "state": "open"\n}',
+      note:'<b>Title is at:</b> <code>title</code>. Flat JSON, a bearer token, and the issue is addressed by repository and number. Response trimmed to three fields.',
+      url:'https://docs.github.com/en/rest/issues/issues#get-an-issue',text:'Open the GitHub API docs'},
+    jira:{label:'Jira · get one issue',
+      code:'GET https://{your-domain}.atlassian.net/rest/api/3/issue/PROJ-123\nAuthorization: Basic base64(email + ":" + api_token)\n\n→ {\n  "key": "PROJ-123",\n  "fields": {\n    "summary": "Login button not working",\n    "status": { "name": "To Do" }\n  }\n}',
+      note:'<b>Title is at:</b> <code>fields.summary</code>. The issue is addressed by a project key such as <code>PROJ-123</code>, and the login is an email plus an API token. Response trimmed to three fields.',
+      url:'https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-get',text:'Open the Jira API docs'}
+  };
+  APIS.code={label:'Before MCP · custom code to get a bug from Azure DevOps',
+    code:'import os\nimport requests\n\nORG, PROJECT = "mycompany", "myproject"\n\n# 1. Custom code for Azure DevOps: its URL, its login, its field names\ndef get_azure_devops_bug(bug_id: int) -> dict:\n    url = (f"https://dev.azure.com/{ORG}/{PROJECT}"\n           f"/_apis/wit/workitems/{bug_id}?api-version=7.1")\n    r = requests.get(url, auth=("", os.environ["AZURE_DEVOPS_PAT"]), timeout=30)\n    r.raise_for_status()\n    fields = r.json()["fields"]\n    return {"id": bug_id,\n            "title": fields["System.Title"],\n            "state": fields["System.State"]}\n\n# 2. Hand-written tool definition so the model knows the function exists\nTOOLS = [{\n    "name": "get_azure_devops_bug",\n    "description": "Get a bug from Azure DevOps by ID",\n    "input_schema": {\n        "type": "object",\n        "properties": {"bug_id": {"type": "integer"}},\n        "required": ["bug_id"],\n    },\n}]\n\n# 3. Hand-written dispatch: when the model asks for a tool, call our function\ndef run_tool(name: str, args: dict):\n    if name == "get_azure_devops_bug":\n        return get_azure_devops_bug(**args)\n    raise ValueError(f"Unknown tool: {name}")',
+    note:'This is one service. GitHub needs its own version of all three pieces (different URL, bearer token, <code>title</code> instead of <code>fields["System.Title"]</code>), and so does Jira. Example code, not run against a real organisation.',
+    url:null};
+  APIS.fmt={label:'JSON-RPC 2.0 · a tools/call request and its response',
+    code:'// Client to server\n{\n  "jsonrpc": "2.0",\n  "id": 2,\n  "method": "tools/call",\n  "params": {\n    "name": "get_bug",\n    "arguments": { "bug_id": 123 }\n  }\n}\n\n// Server to client: same structure, same id\n{\n  "jsonrpc": "2.0",\n  "id": 2,\n  "result": {\n    "content": [{ "type": "text",\n      "text": "Bug 123: Login button not working" }],\n    "isError": false\n  }\n}',
+    note:'<b>jsonrpc</b> is the version, <b>id</b> ties the response to its request, <b>method</b> is the operation, <b>params</b> holds its details. Simplified: newer protocol versions add a <code>_meta</code> field to every request.',
+    url:null,
+    paras:['Let\'s start with the common message format. MCP uses JSON-RPC 2.0 for its protocol messages. In simple terms, JSON-RPC gives the client and server a standard structure for sending requests and receiving responses. So instead of every MCP client and server inventing their own way of communicating, they follow the same message structure.','What does that look like? When the client wants to call a tool, it sends a message like this. <code>jsonrpc</code> tells us which JSON-RPC version we\'re using. <code>id</code> identifies this particular request. <code>method</code> tells the server what operation we want to perform. And <code>params</code> contains the details of that operation, in this case the tool name and its arguments.','The server then sends a response back using the same JSON-RPC structure. Notice it uses the same <code>id</code>, so the client knows this response belongs to request 2. So JSON-RPC gives the MCP client and server a common structure for exchanging messages.']};
+  APIS.list={label:'tools/list · what tools do you have?',
+    code:'// Client to server: what tools do you have?\n{ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }\n\n// Server to client\n{\n  "jsonrpc": "2.0",\n  "id": 1,\n  "result": {\n    "tools": [{\n      "name": "get_bug",\n      "description": "Get a bug from Azure DevOps.",\n      "inputSchema": {\n        "type": "object",\n        "properties": { "bug_id": { "type": "integer" } },\n        "required": ["bug_id"]\n      }\n    }]\n  }\n}',
+    note:'Each tool comes with a name, a description and an input schema that says which parameters it expects. A real server usually lists several tools.',
+    url:null,
+    paras:['Now the second part: the standard operations for working with tools. There are two we\'ll look at. The first is <code>tools/list</code>, which basically means: hey server, what tools do you have?','An Azure DevOps MCP server might return tools such as <code>get_bug</code>, <code>create_bug</code> and <code>update_bug</code>. (Example names. The real Microsoft server names its tools differently.) Along with each tool, the server provides its description and an input schema, which tells the client what parameters the tool expects.']};
+  APIS.call={label:'tools/call · run this tool',
+    code:'// Client to server: run get_bug with bug_id 123\n{\n  "jsonrpc": "2.0",\n  "id": 2,\n  "method": "tools/call",\n  "params": {\n    "name": "get_bug",\n    "arguments": { "bug_id": 123 }\n  }\n}\n\n// The server runs its get_bug function, calls Azure DevOps,\n// and replies with the result (same shape as the format panel).',
+    note:'This is the same message you saw in "One real request", step 6.',
+    url:null,
+    paras:['Once the client knows what tools are available, it can use one. That\'s where <code>tools/call</code> comes in. It tells the MCP server which tool we want to execute and provides the arguments that tool needs. Here we\'re asking the server to call <code>get_bug</code> with a <code>bug_id</code> of 123.','The MCP server receives the request, runs its <code>get_bug</code> function, communicates with Azure DevOps and sends the result back to the client.']};
+  APIS.swap={label:'Swap the server · same request, same shape',
+    code:'// The same request goes to either server\n{ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }\n\n// Azure DevOps MCP server replies\n{ "jsonrpc": "2.0", "id": 1, "result": { "tools": [{\n    "name": "get_bug",\n    "description": "Get a bug from Azure DevOps.",\n    "inputSchema": { "type": "object",\n      "properties": { "bug_id": { "type": "integer" } },\n      "required": ["bug_id"] }\n}] } }\n\n// GitHub MCP server replies (illustrative): same shape, different tool\n{ "jsonrpc": "2.0", "id": 1, "result": { "tools": [{\n    "name": "get_issue",\n    "description": "Get an issue from a GitHub repository.",\n    "inputSchema": { "type": "object",\n      "properties": { "owner": { "type": "string" },\n                      "repo": { "type": "string" },\n                      "issue_number": { "type": "integer" } },\n      "required": ["owner", "repo", "issue_number"] }\n}] } }',
+    note:'Only the tool names and their schemas differ. The client code that sends <code>tools/list</code> and <code>tools/call</code> does not change. The GitHub reply is an illustration, not a copy of the real GitHub server\'s tool list.',
+    url:null,
+    paras:['Now imagine I replace the Azure DevOps MCP server with a GitHub MCP server. The client can still use the same MCP operations: <code>tools/list</code> and <code>tools/call</code>. The only thing that changes is the tools the server exposes and the implementation behind them.','So my AI application doesn\'t need a different communication mechanism for Azure DevOps, GitHub, Jira or any other service. It uses the same MCP protocol. That\'s what I mean when I say MCP provides a standard communication protocol between the MCP client and the MCP server.','The server handles the service-specific integration. The client speaks MCP. And both sides understand the same protocol.']};
+  var mcpSel=null;
+  Array.prototype.forEach.call(document.querySelectorAll('.mcpb'),function(b){
+    b.addEventListener('click',function(){var k=b.getAttribute('data-k');mcpSel=(mcpSel===k)?null:k;render();});
+  });
+  var apiSel=null;
+  function apiPanel(key){
+    var a=APIS[key],side=$('side');side.innerHTML='';
+    var ey=document.createElement('div');ey.className='eyebrow';
+    var lab=document.createElement('span');lab.textContent=a.label;ey.appendChild(lab);side.appendChild(ey);
+    var pre=document.createElement('pre');pre.className='wire';
+    var code=document.createElement('code');code.style.background='none';code.style.padding='0';highlight(code,a.code);
+    pre.appendChild(code);side.appendChild(pre);
+    var nt=document.createElement('p');nt.className='apinote';nt.innerHTML=a.note;side.appendChild(nt);
+    if(a.url){var l=document.createElement('a');l.className='btn apilink';l.href=a.url;l.target='_blank';l.rel='noopener noreferrer';l.textContent=a.text+' ↗';side.appendChild(l);}
+  }
+  $('showcode').addEventListener('click',function(){apiSel=(apiSel==='code')?null:'code';render();});
+  Array.prototype.forEach.call(document.querySelectorAll('.svc'),function(g){
+    var pick=function(){var k=g.getAttribute('data-svc');apiSel=(apiSel===k)?null:k;render();};
+    g.addEventListener('click',pick);
+    g.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}});
+  });
+  function presenterPanel(paras,cues){
+    var h=paras.map(function(p){return '<p>'+p+'</p>';}).join('');
+    if(cues&&cues.length){h+='<div class="cuehead">On screen</div><ul>'+cues.map(function(c){return '<li>'+c+'</li>';}).join('')+'</ul>';}
+    $('pbody').innerHTML=h;
+  }
+  var pn=false;
+  function togglePN(){
+    pn=!pn;$('presenter').hidden=!pn;
+    $('pnbtn').textContent=pn?'Hide presenter notes':'Show presenter notes';
+    $('pnbtn').setAttribute('aria-expanded',pn?'true':'false');
+  }
+
+  function render(){
+    var sc=SCENES.filter(function(s){return s.id===scene;})[0];
+    ['fig-hook','fig-problem','fig-mcp','fig-flow'].forEach(function(id){$(id).hidden=(id!==sc.fig);});
+    SCENES.forEach(function(s){var t=$('tab-'+s.id);t.setAttribute('aria-selected',s.id===scene?'true':'false');t.tabIndex=s.id===scene?0:-1;});
+    $('ctl-hook').hidden=scene!=='hook';
+    $('ctl-flow').hidden=scene!=='flow';
+    $('ctl-problem').hidden=scene!=='problem';
+    $('showcode').textContent=apiSel==='code'?'Hide the code':'Show the code';
+    $('showcode').setAttribute('aria-pressed',apiSel==='code'?'true':'false');
+    $('ctl-mcp').hidden=scene!=='mcp';
+    $('side').classList.toggle('wide',(scene==='problem'&&apiSel==='code')||(scene==='mcp'&&!!mcpSel));
+    $('legend').hidden=!(scene==='flow'||scene==='recap'||scene==='mcp');
+    if(sc.fig==='fig-flow'){
+      groups.forEach(function(g,i){
+        var c='msg ';
+        if(sc.all){c+='all';}else if(i<step){c+='past';}else if(i===step){c+='now';}else{c+='future';}
+        g.setAttribute('class',c+' k-'+MSGS[i].k);
+      });
+      sizeBgs();
+    }
+    if(sc.steps){
+      var d=STEPS[step];
+      $('eyebrow').textContent='Step '+(step+1)+' of '+MSGS.length+' · '+PHASES[step];
+      $('ntitle').textContent=d.title;
+      $('nbody').innerHTML='<p>'+d.cap+'</p>';presenterPanel(d.paras,null);$('side').hidden=false;$('notes').classList.remove('one');
+      wirePanel(d.wire);
+      $('stepctr').textContent=(step+1)+' / '+MSGS.length;
+      $('prev').disabled=step===0;$('next').disabled=step===MSGS.length-1;
+    }else{
+      $('eyebrow').textContent=sc.label;
+      $('ntitle').textContent=sc.title;
+      $('nbody').innerHTML='<ul class="points">'+sc.points.map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul>';var selKey=(scene==='problem')?apiSel:(scene==='mcp'?mcpSel:null);
+      var showApi=!!selKey;
+      if(scene==='mcp'&&mcpSel){presenterPanel(APIS[mcpSel].paras,null);}else{presenterPanel(sc.paras,sc.cues);}
+      if(showApi){apiPanel(selKey);}
+      $('side').hidden=!showApi;$('notes').classList.toggle('one',!showApi);
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('.mcpb'),function(b){
+      b.setAttribute('aria-pressed',b.getAttribute('data-k')===mcpSel&&scene==='mcp'?'true':'false');
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.svc'),function(g){
+      var on=g.getAttribute('data-svc')===apiSel;
+      g.setAttribute('class','svc'+(on?' sel':''));g.setAttribute('aria-pressed',on?'true':'false');
+    });
+  }
+  function setScene(id){
+    scene=id;stopPlay();
+    if(id==='flow'&&step===MSGS.length-1&&false){step=0;}
+    render();
+  }
+
+  $('prev').addEventListener('click',function(){stopPlay();setStep(step-1);});
+  $('next').addEventListener('click',function(){stopPlay();setStep(step+1);});
+  $('play').addEventListener('click',function(){
+    if(timer){stopPlay();return;}
+    if(step>=MSGS.length-1){step=0;render();}
+    $('play').textContent='Pause';
+    timer=setInterval(function(){
+      if(step>=MSGS.length-1){stopPlay();return;}
+      step+=1;render();
+    },4500);
+  });
+  $('reveal').addEventListener('click',function(){
+    revealed=!revealed;
+    $('hookq').textContent=revealed?'MCP':'?';
+    $('hookl').textContent=revealed?'Model Context Protocol':'the layer in between';
+    $('reveal').textContent=revealed?'Hide the layer':'Reveal the layer';
+    $('reveal').setAttribute('aria-pressed',revealed?'true':'false');
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='n'||e.key==='N'){togglePN();return;}
+    if(scene!=='flow')return;
+    if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;
+    if(e.key==='ArrowRight'){stopPlay();setStep(step+1);}
+    if(e.key==='ArrowLeft'){stopPlay();setStep(step-1);}
+  });
+
+  $('pnbtn').addEventListener('click',togglePN);
+  try{var h=(location.hash||'').replace('#','');if(SCENES.some(function(s){return s.id===h;})){scene=h;}}catch(e){}
+  render();
+  if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){if(scene==='flow'||scene==='recap'){sizeBgs();}});}
+})();
+</script>
+
+</body></html>
